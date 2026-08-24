@@ -1,0 +1,89 @@
+{
+  "note": "pocket-eval mini-benchmark: 12 self-written multiple-choice questions over the bundled corpus. Mix of definitional (lexical) and reasoning (inferential) items. Options are always exactly 4, answer is the correct index.",
+  "questions": [
+    {
+      "id": "q01",
+      "topic": "tokens",
+      "question": "Which token standard defines fungible tokens?",
+      "options": ["ERC 4626", "ERC 721", "ERC 20", "ERC 1155"],
+      "answer": 2
+    },
+    {
+      "id": "q02",
+      "topic": "security",
+      "question": "Which pattern updates internal state before any external call to prevent reentrancy?",
+      "options": ["proxy delegation", "checks effects interactions", "emergency pause", "timelock delays"],
+      "answer": 1
+    },
+    {
+      "id": "q03",
+      "topic": "security",
+      "question": "What do optimistic rollups use to challenge invalid state transitions?",
+      "options": ["finality gadgets", "merkle roots", "validity proofs", "fraud proofs"],
+      "answer": 3
+    },
+    {
+      "id": "q04",
+      "topic": "mev",
+      "question": "Which strategy buys before a victim swap and sells after it completes?",
+      "options": ["sandwich attack", "arbitrage triage", "junk liquidation", "front running"],
+      "answer": 0
+    },
+    {
+      "id": "q05",
+      "topic": "identity",
+      "question": "Which kind of wallet requires multiple signatures before funds move?",
+      "options": ["paper wallet", "hardware wallet", "multisig wallet", "social wallet"],
+      "answer": 2
+    },
+    {
+      "id": "q06",
+      "topic": "oracles",
+      "question": "Which standard aggregates prices from many exchanges with deviation thresholds?",
+      "options": ["chainlink price feeds", "compound markets", "uniswap pools", "aave reserves"],
+      "answer": 0
+    },
+    {
+      "id": "q07",
+      "topic": "zk",
+      "question": "What is the main bottleneck in zk-rollup deployments?",
+      "options": ["sequencer uptime", "proof generation cost", "token liquidity", "challenge window length"],
+      "answer": 1
+    },
+    {
+      "id": "q08",
+      "topic": "defi",
+      "question": "Slippage is the difference between the expected trade price and which price?",
+      "options": ["the liquidation price", "the oracle price", "the price actually received", "the futures price"],
+      "answer": 2
+    },
+    {
+      "id": "q09",
+      "topic": "agents",
+      "question": "Why must fetched web content never be spliced into an agent's system prompt?",
+      "options": ["it violates rate limits", "it makes logs unreadable", "it uses too many tokens", "it can carry prompt injection"],
+      "answer": 3
+    },
+    {
+      "id": "q10",
+      "topic": "security",
+      "question": "What does an invariant test assert about a contract?",
+      "options": ["the owner's private key", "a property that must always hold", "the gas cost of each function", "the price of the token"],
+      "answer": 1
+    },
+    {
+      "id": "q11",
+      "topic": "composability",
+      "question": "What happens if a flash loan is not repaid by the end of the transaction?",
+      "options": ["interest accrues slowly", "the collateral is seized", "the whole transaction reverts", "the loan becomes a position"],
+      "answer": 2
+    },
+    {
+      "id": "q12",
+      "topic": "wallets",
+      "question": "What is the master secret that can regenerate every address in a wallet?",
+      "options": ["the rpc endpoint", "the nonce counter", "the gas limit", "the seed phrase"],
+      "answer": 3
+    }
+  ]
+}

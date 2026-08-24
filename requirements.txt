@@ -1,0 +1,5 @@
+# Runtime dependencies: NONE — the default path (n-gram + random baselines)
+# is pure Python stdlib and runs fully offline.
+# Optional:
+#   pip install "pocket-eval[hf]"   -> real (tiny) models via transformers
+# Dev tools: pytest (tests), ruff (lint).

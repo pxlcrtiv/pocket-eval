@@ -1,0 +1,36 @@
+[project]
+name = "pocket-eval"
+version = "0.1.0"
+description = "The LLM eval harness that fits in your pocket: CPU-only, keyless, offline. Perplexity + multiple-choice QA on a bundled DeFi/ML corpus — n-gram baseline out of the box, optional Hugging Face small models."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "pxlcrtiv" }]
+keywords = ["llm", "evaluation", "benchmark", "perplexity", "mlops", "decentralized-ai"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: MIT License",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+  "Intended Audience :: Developers",
+]
+
+[project.scripts]
+pocket-eval = "pocket_eval.cli:main"
+
+[project.optional-dependencies]
+dev = ["pytest", "ruff"]
+hf = ["transformers"]  # optional backend: evaluate real (tiny) models
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["pocket_eval*"]
+
+[tool.setuptools.package-data]
+"pocket_eval.data" = ["*.json", "corpus/*.md"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
