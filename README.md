@@ -110,12 +110,22 @@ $ pocket-eval perplexity --backend huggingface --model distilgpt2 --json
 {"perplexity": 1191.2760960550697}
 ```
 
-This is the point of the harness: **the n-gram baseline over the corpus
-beats real but tiny models on definitional items (10/12 vs 2/12)** — a
-lexical model "knows" the corpus because it memorizes co-occurrence, while
-GPT-2-class models emit fluent-but-flat probabilities. Plug in a
-domain-fine-tuned or larger model (`--model Qwen/Qwen2.5-0.5B-Instruct`)
-and watch the ordering flip.
+## Results so far (real runs, keyless, CPU-only)
+
+| Model / baseline | Corpus PPL | QA accuracy | What it shows |
+| --- | --- | --- | --- |
+| random (seed stream, avg) | — | ~25% | the chance floor |
+| ngram-v1 (bundled bigram) | 520.7 | 10/12 (83.3%) | lexical co-occurrence memorizes definitions |
+| `sshleifer/tiny-gpt2` | 49,982 | 2/12 (16.7%) | probabilities too flat to discriminate |
+| `distilgpt2` | 1,191 | 3/12 (25.0%) | fluency ≠ definitional knowledge |
+| `Qwen/Qwen2.5-0.5B-Instruct` | 4,918 | 3/12 (25.0%) | raw-logprob scoring ignores chat templates |
+
+The lesson is the point of the harness: **a 10-line n-gram baseline over
+the corpus beats GPT-2-class models on definitional items** — it memorizes
+co-occurrence while small LMs emit fluent-but-flat probabilities, and
+instruct-tuned models need chat-formatted scoring to answer at all. Plug
+in a bigger or chat-templated scorer and watch the ordering flip; the
+harness keeps the comparison reproducible either way.
 
 ## Commands
 
