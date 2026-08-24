@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pytest
+          pip install -e .
+      - name: Unit tests (offline, deterministic)
+        run: python -m pytest tests/ -q
+      - name: Smoke — bundled eval + golden outputs
+        run: |
+          pocket-eval corpus | grep -q "docs: 15"
+          pocket-eval demo | grep -q "83.3%"
+          pocket-eval qa --backend random --seed 7 | grep -q "6/12 correct"
+          pocket-eval perplexity "Flash loans must be repaid in the same transaction" | grep -q "453.47"
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: ruff lint
+        run: |
+          pip install ruff
+          ruff check pocket_eval tests scripts --output-format=github
