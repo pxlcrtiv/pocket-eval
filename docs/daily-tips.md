@@ -12,3 +12,10 @@ An n-gram model over your corpus is the cheapest known answer. Models that canno
 
 > `pocket-eval qa --backend ngram`
 
+
+## 2026-08-25 — Eval tip of the day: One run is a rumor
+
+LLM evaluation is noisy: sampling, tie-breaking and batching shift scores. Report seeds, repeat runs, and treat single-run numbers as anecdotes, not evidence.
+
+> `pocket-eval qa --backend ngram --seed 7`
+
