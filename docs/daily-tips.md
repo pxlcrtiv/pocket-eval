@@ -19,3 +19,10 @@ LLM evaluation is noisy: sampling, tie-breaking and batching shift scores. Repor
 
 > `pocket-eval qa --backend ngram --seed 7`
 
+
+## 2026-08-26 — Eval tip of the day: Perplexity is a fluency meter, not a reasoning meter
+
+Perplexity measures how well a model predicts tokens. Tiny models can score low perplexity on memorized text yet fail every reasoning question; report both.
+
+> `pocket-eval demo`
+
