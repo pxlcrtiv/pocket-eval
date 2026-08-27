@@ -26,3 +26,8 @@ Perplexity measures how well a model predicts tokens. Tiny models can score low 
 
 > `pocket-eval demo`
 
+
+## 2026-08-27 — Eval tip of the day: Leakage is the silent inflator
+
+If benchmark text appears in pretraining data, scores are rent, not capability. Write your own items (this repo's mini-benchmark is original) or check overlap first.
+
