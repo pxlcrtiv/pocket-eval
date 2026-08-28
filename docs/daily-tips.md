@@ -31,3 +31,8 @@ Perplexity measures how well a model predicts tokens. Tiny models can score low 
 
 If benchmark text appears in pretraining data, scores are rent, not capability. Write your own items (this repo's mini-benchmark is original) or check overlap first.
 
+
+## 2026-08-28 — Eval tip of the day: Contamination corrupts comparisons
+
+Comparing model A on a benchmark B already saw in training is unfair. Keep a held-out set nobody shipped, and re-derive it when models get refreshed.
+
