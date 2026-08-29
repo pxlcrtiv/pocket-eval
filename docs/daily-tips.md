@@ -36,3 +36,8 @@ If benchmark text appears in pretraining data, scores are rent, not capability. 
 
 Comparing model A on a benchmark B already saw in training is unfair. Keep a held-out set nobody shipped, and re-derive it when models get refreshed.
 
+
+## 2026-08-29 — Eval tip of the day: Tokenization is part of the model
+
+BPE boundaries change what a prompt means to the model. 'erc 20' tokenizes differently than 'erc-20' — normalize inputs the same way for every model you compare.
+
