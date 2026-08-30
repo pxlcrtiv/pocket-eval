@@ -41,3 +41,8 @@ Comparing model A on a benchmark B already saw in training is unfair. Keep a hel
 
 BPE boundaries change what a prompt means to the model. 'erc 20' tokenizes differently than 'erc-20' — normalize inputs the same way for every model you compare.
 
+
+## 2026-08-30 — Eval tip of the day: Short options inflate accuracy
+
+With 4 short options, a model can win by pattern-matching surface form. Vary option length and distractors or you will measure format, not understanding.
+
