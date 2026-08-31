@@ -46,3 +46,10 @@ BPE boundaries change what a prompt means to the model. 'erc 20' tokenizes diffe
 
 With 4 short options, a model can win by pattern-matching surface form. Vary option length and distractors or you will measure format, not understanding.
 
+
+## 2026-08-31 — Eval tip of the day: Score, then squint
+
+Look at per-item scores, not just accuracy. Flat scores near zero mean the model cannot discriminate options at all — that is a finding, and it explains the accuracy.
+
+> `pocket-eval qa --backend huggingface --format json`
+
