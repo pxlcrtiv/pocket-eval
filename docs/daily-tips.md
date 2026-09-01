@@ -53,3 +53,8 @@ Look at per-item scores, not just accuracy. Flat scores near zero mean the model
 
 > `pocket-eval qa --backend huggingface --format json`
 
+
+## 2026-09-01 — Eval tip of the day: Match the prompt format to the model family
+
+Instruct-tuned models expect chat templates; base models expect raw text. Scoring with the wrong format degrades every number you publish.
+
