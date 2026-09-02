@@ -58,3 +58,10 @@ Look at per-item scores, not just accuracy. Flat scores near zero mean the model
 
 Instruct-tuned models expect chat templates; base models expect raw text. Scoring with the wrong format degrades every number you publish.
 
+
+## 2026-09-02 — Eval tip of the day: Determinism is a feature of harnesses
+
+Same model + same seed + same input must give the same report. If your eval is not bit-reproducible, regressions are invisible and comparisons are marketing.
+
+> `pocket-eval demo --format json`
+
