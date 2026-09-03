@@ -65,3 +65,8 @@ Same model + same seed + same input must give the same report. If your eval is n
 
 > `pocket-eval demo --format json`
 
+
+## 2026-09-03 — Eval tip of the day: Bound the runtime dependency
+
+An eval that needs a GPU or an API key cannot run in CI, so it never runs. Keep a deterministic offline baseline in the default path — it is your regression gate.
+
