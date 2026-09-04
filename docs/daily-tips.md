@@ -75,3 +75,8 @@ An eval that needs a GPU or an API key cannot run in CI, so it never runs. Keep 
 
 Domain language changes ('NFT', 'L2', 'AA') and models absorb old benchmarks. Refresh the corpus and the item set on a calendar, not when someone remembers.
 
+
+## 2026-09-05 — Eval tip of the day: Sample size tells you what to believe
+
+The difference between 8/12 and 10/12 on one mini-benchmark is weak evidence. Scale items to 100+ before claiming a model is better; use the mini version to sanity-check pipelines.
+
