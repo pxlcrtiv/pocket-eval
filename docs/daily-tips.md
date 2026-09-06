@@ -80,3 +80,10 @@ Domain language changes ('NFT', 'L2', 'AA') and models absorb old benchmarks. Re
 
 The difference between 8/12 and 10/12 on one mini-benchmark is weak evidence. Scale items to 100+ before claiming a model is better; use the mini version to sanity-check pipelines.
 
+
+## 2026-09-06 — Eval tip of the day: Report the floor and the ceiling
+
+Random chance (floor) and the lexical baseline (cheap ceiling) bracket every model score. Publish all three; a score without context is a headline, not a result.
+
+> `pocket-eval demo`
+
