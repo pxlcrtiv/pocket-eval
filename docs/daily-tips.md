@@ -92,3 +92,10 @@ Random chance (floor) and the lexical baseline (cheap ceiling) bracket every mod
 
 Automated metrics miss the label errors, ambiguous items and tricks. Every release, hand-audit a sample of items and a sample of model answers.
 
+
+## 2026-09-08 — Eval tip of the day: Regression gates belong in CI
+
+Pin golden numbers (this repo's tests do) so a dependency bump or a data edit that silently changes scores fails the build instead of drifting.
+
+> `pytest tests/ -q`
+
