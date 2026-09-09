@@ -99,3 +99,8 @@ Pin golden numbers (this repo's tests do) so a dependency bump or a data edit th
 
 > `pytest tests/ -q`
 
+
+## 2026-09-09 — Eval tip of the day: Domain corpora must be original
+
+Scraping blog posts into an eval corpus imports license and leakage baggage. Write your own domain text; it costs an afternoon and pays in trust.
+
