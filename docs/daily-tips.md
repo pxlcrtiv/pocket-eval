@@ -104,3 +104,10 @@ Pin golden numbers (this repo's tests do) so a dependency bump or a data edit th
 
 Scraping blog posts into an eval corpus imports license and leakage baggage. Write your own domain text; it costs an afternoon and pays in trust.
 
+
+## 2026-09-10 — Eval tip of the day: Small models are probe assets
+
+A 15M-parameter model is worthless as a capability claim and invaluable as a harness validator: it should run in seconds on the same CPU you develop on.
+
+> `pocket-eval qa --backend huggingface --model sshleifer/tiny-gpt2`
+
