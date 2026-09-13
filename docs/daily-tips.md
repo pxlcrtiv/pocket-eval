@@ -121,3 +121,8 @@ Store tokenized prompts, option order and seeds with every report. You cannot de
 
 A 3-point accuracy gain that triples latency may be a regression in production. Fold wall-clock time and peak memory into the leaderboard.
 
+
+## 2026-09-13 — Eval tip of the day: Define the decision before you measure
+
+'Which model deploys?' needs a threshold ('must beat the ngram baseline by 20 points on definitional items'). Metrics without decision rules get argued, not used.
+
