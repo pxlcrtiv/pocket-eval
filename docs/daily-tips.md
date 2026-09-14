@@ -126,3 +126,8 @@ A 3-point accuracy gain that triples latency may be a regression in production. 
 
 'Which model deploys?' needs a threshold ('must beat the ngram baseline by 20 points on definitional items'). Metrics without decision rules get argued, not used.
 
+
+## 2026-09-14 — Eval tip of the day: Version your eval
+
+Pin the harness version, corpus hash and benchmark version in the report header. 'It scored 83%' means nothing without the eval's own version stamp.
+
