@@ -138,3 +138,10 @@ No surprise regressions, no leaked hints, reproducible in CI, one command. Glamo
 
 > `pocket-eval demo`
 
+
+## 2026-09-16 — Eval tip of the day: Chance level is a baseline, not a footnote
+
+Always run a random baseline (pocket-eval: `--backend random`). If a model scores at or below the coin flip, nothing in your pipeline is measuring knowledge.
+
+> `pocket-eval qa --backend random`
+
