@@ -145,3 +145,10 @@ Always run a random baseline (pocket-eval: `--backend random`). If a model score
 
 > `pocket-eval qa --backend random`
 
+
+## 2026-09-17 — Eval tip of the day: A lexical baseline shows what counting buys
+
+An n-gram model over your corpus is the cheapest known answer. Models that cannot beat it on definitional trivia are not 'thinking' — they are re-emitting training statistics.
+
+> `pocket-eval qa --backend ngram`
+
