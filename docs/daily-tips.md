@@ -271,3 +271,10 @@ A 3-point accuracy gain that triples latency may be a regression in production. 
 
 Pin the harness version, corpus hash and benchmark version in the report header. 'It scored 83%' means nothing without the eval's own version stamp.
 
+
+## 2026-10-09 — Eval tip of the day: The best eval is boring
+
+No surprise regressions, no leaked hints, reproducible in CI, one command. Glamour belongs in the model; rigor belongs in the harness.
+
+> `pocket-eval demo`
+
