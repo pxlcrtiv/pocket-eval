@@ -5,8 +5,33 @@ from __future__ import annotations
 import math
 import re
 from dataclasses import dataclass, field
+from typing import Protocol, runtime_checkable
 
 WORD_RE = re.compile(r"[a-z0-9]+(?:['-][a-z0-9]+)*")
+
+
+@runtime_checkable
+class Backend(Protocol):
+    """The evaluation seam: everything the eval loop needs from a model.
+
+    One deep module behind one interface — implementations are
+    interchangeable and the eval loop branches on nothing:
+
+    - ``name``          — display name used in reports
+    - ``answer``        — answer one question: (option index, score)
+    - ``corpus_ppl``    — perplexity of the whole corpus, or None when the
+                          backend cannot compute it (e.g. the random floor)
+    """
+
+    name: str
+
+    def answer(self, question: str, options: tuple[str, ...]) -> tuple[int, float]:
+        """Return (chosen option index, its score) for one QA item."""
+        ...
+
+    def corpus_ppl(self, corpus: list[str]) -> float | None:
+        """Perplexity of the joined corpus, or None if unsupported."""
+        ...
 
 
 def tokenize(text: str) -> list[str]:
