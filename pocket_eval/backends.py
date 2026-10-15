@@ -12,13 +12,11 @@ from __future__ import annotations
 
 import math
 import random
-import re
 from pathlib import Path
 
-from .core import PerplexityError, tokenize
+from .core import Backend, PerplexityError, average_logprob, tokenize
 
 UNKNOWN = "<unk>"
-_TOKEN_RE = re.compile(r"[a-z0-9]+(?:['-][a-z0-9]+)*")
 
 
 class NgramLM:
@@ -30,6 +28,8 @@ class NgramLM:
     """
 
     def __init__(self, corpus_docs: list[str]):
+        self.name = "ngram-v1 (bundled bigram)"
+        self.seed: int | None = None
         self.vocab: dict[str, int] = {}
         self.unigram: dict[str, int] = {}
         self.bigram: dict[tuple[str, str], int] = {}
@@ -65,16 +65,12 @@ class NgramLM:
         return math.log(num / denom)
 
     def mean_logprob(self, tokens: list[str]) -> float:
-        """Mean per-token log-probability; raises PerplexityError if empty."""
-        if not tokens:
-            raise PerplexityError("empty token sequence")
-        total = 0.0
-        for i, tok in enumerate(tokens):
-            lp = self.logprob(tokens[i - 1] if i else None, tok)
-            if not math.isfinite(lp):
-                raise PerplexityError(f"non-finite logprob for token {tok!r}")
-            total += lp
-        return total / len(tokens)
+        """Mean per-token log-probability; raises PerplexityError if empty.
+
+        Delegates to ``core.average_logprob`` — one implementation of the
+        mean-logprob loop, shared by every seam that needs it.
+        """
+        return average_logprob(tokens, self.logprob)
 
     def perplexity(self, text: str) -> float:
         toks = tokenize(text)
@@ -96,6 +92,19 @@ class NgramLM:
         q_only = self.mean_logprob(q_tokens)
         return full - q_only
 
+    def answer(self, question: str, options: tuple[str, ...]) -> tuple[int, float]:
+        """Answer one QA item: the option this LM rates as the most likely
+        continuation of the question. See ``core.best_option``."""
+        from .core import best_option
+
+        return best_option(question, options, self.score_continuation)
+
+    def corpus_ppl(self, corpus: list[str]) -> float | None:
+        """Perplexity of the whole corpus, or None when there is nothing to score."""
+        if not corpus:
+            return None
+        return self.perplexity(" ".join(corpus))
+
 
 class RandomBaseline:
     """Seeded uniform-choice baseline — the honest chance floor for QA.
@@ -105,16 +114,20 @@ class RandomBaseline:
     """
 
     def __init__(self, seed: int = 7):
+        self.name = "random-uniform"
         self.seed = seed
         self._rng = random.Random(seed)
 
     def pick(self, option_count: int) -> int:
         return self._rng.randrange(option_count)
 
-    def score_continuation(self, q_tokens: list[str], opt_tokens: list[str]) -> float:
-        # Random baseline scores are not meaningful; the CLI handles picking
-        # directly. This stub keeps the backend interface uniform.
-        raise NotImplementedError("RandomBaseline is a picker, not a scorer")
+    def answer(self, question: str, options: tuple[str, ...]) -> tuple[int, float]:
+        """Uniform chance pick for one QA item — (index, meaningless score)."""
+        return self.pick(len(options)), 0.0
+
+    def corpus_ppl(self, corpus: list[str]) -> float | None:
+        """The random baseline has no language model — perplexity is unsupported."""
+        return None
 
 
 class HFModel:
@@ -128,6 +141,8 @@ class HFModel:
     DEFAULT_MODEL = "sshleifer/tiny-gpt2"
 
     def __init__(self, model_id: str | None = None, max_length: int = 512):
+        self.name = model_id or self.DEFAULT_MODEL
+        self.seed: int | None = None
         self.model_id = model_id or self.DEFAULT_MODEL
         self.max_length = max_length
         self._model = None
@@ -211,6 +226,17 @@ class HFModel:
         q_only = seq_logprob(q_text)
         return full - q_only
 
+    def answer(self, question: str, options: tuple[str, ...]) -> tuple[int, float]:
+        """Answer one QA item by scoring each option's continuation."""
+        from .core import best_option
+
+        return best_option(question, options, self.score_continuation)
+
+    def corpus_ppl(self, corpus: list[str]) -> float | None:
+        """Perplexity of the whole corpus via the model's cross-entropy loss."""
+        ppl, _ = self.corpus_perplexity(corpus)
+        return ppl
+
 
 def load_corpus(data_dir: Path) -> list[str]:
     """Read bundled corpus markdown docs in stable filename order."""
@@ -240,3 +266,15 @@ def make_ngram(corpus_docs: list[str]) -> NgramLM:
         return NgramLM(corpus_docs)
 
     return _build()
+
+
+def make_backend(backend: str, corpus: list[str], model: str | None = None, seed: int = 7) -> Backend:
+    """The ONE place a CLI string becomes a Backend. The eval loop never sees
+    the string — this factory is the whole of the dispatch."""
+    if backend == "ngram":
+        return make_ngram(corpus)
+    if backend == "random":
+        return RandomBaseline(seed)
+    if backend == "huggingface":
+        return HFModel(model)
+    raise ValueError(f"unknown backend: {backend!r} (choose from ngram, random, huggingface)")

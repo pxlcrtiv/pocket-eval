@@ -210,3 +210,82 @@ def test_cli_demo_json_valid(capsys):
     assert main(["demo", "--format", "json"]) == 0
     payload = json.loads(capsys.readouterr().out)
     assert payload["qa"]["correct"] == 10
+
+
+# ---------------------------------------------------------------- backend seam
+def test_backend_protocol_conformance():
+    """Every real backend satisfies the core.Backend seam — the eval loop
+    can treat them interchangeably."""
+    from pocket_eval.core import Backend
+
+    for backend in (NgramLM(CORPUS), RandomBaseline(seed=7)):
+        assert isinstance(backend, Backend)
+        assert backend.name
+        idx, score = backend.answer("What is a flash loan?", ("a", "b", "c", "d"))
+        assert 0 <= idx < 4
+        assert isinstance(score, float)
+
+
+def test_make_backend_factory():
+    from pocket_eval.backends import HFModel, make_backend
+
+    assert isinstance(make_backend("ngram", CORPUS), NgramLM)
+    rb = make_backend("random", CORPUS, seed=3)
+    assert isinstance(rb, RandomBaseline)
+    assert rb.seed == 3
+    assert isinstance(make_backend("huggingface", CORPUS, model="x/y"), HFModel)
+    with pytest.raises(ValueError):
+        make_backend("bogus", CORPUS)
+
+
+def test_run_eval_accepts_a_fake_backend():
+    """The payoff of the seam: the eval loop is unit-testable with a scripted
+    fake — no corpus, no model, no CLI strings."""
+    from pocket_eval.cli import run_eval
+
+    class FakeBackend:
+        name = "fake"
+        seed = None
+
+        def answer(self, question, options):
+            return (0, 1.5)  # always pick the first option, fixed score
+
+        def corpus_ppl(self, corpus):
+            return 42.0
+
+    items = [
+        QaItem(id="a", topic="t", question="q1", options=("x", "y", "z", "w"), answer=0),
+        QaItem(id="b", topic="t", question="q2", options=("x", "y", "z", "w"), answer=3),
+    ]
+    r = run_eval(FakeBackend(), None, 7, [], items, with_ppl=True)
+    assert r.backend == "fake"
+    assert r.model == "fake"
+    assert r.corpus_ppl == 42.0
+    assert r.corpus_tokens == 0  # token_stats([]) -> 0 tokens, no corpus needed
+    assert r.qa_total == 2
+    assert r.qa_correct == 1  # item a: picked 0 == answer 0
+    assert r.qa_accuracy == 0.5
+    assert [d.score for d in r.qa_details] == [1.5, 1.5]
+
+
+def test_run_eval_string_still_works():
+    """Backwards compatibility: the CLI passes strings, resolved by the factory."""
+    from pocket_eval.cli import run_eval
+
+    r = run_eval("ngram", None, 7, CORPUS, ITEMS, with_ppl=False)
+    assert r.qa_correct == 10
+    assert r.backend == "ngram-v1 (bundled bigram)"
+
+
+def test_average_logprob_is_shared():
+    """core.average_logprob is now exercised through NgramLM — one implementation."""
+    from pocket_eval.core import PerplexityError, average_logprob
+
+    with pytest.raises(PerplexityError):
+        average_logprob([], lambda prev, tok: -1.0)
+    # a fixed scorer makes the math exact: mean of three -1.0s
+    assert average_logprob(["a", "b", "c"], lambda prev, tok: -1.0) == -1.0
+    # NgramLM's mean_logprob routes through the same function
+    assert LM.mean_logprob(["flash", "loans"]) == pytest.approx(
+        average_logprob(["flash", "loans"], LM.logprob), abs=1e-12
+    )

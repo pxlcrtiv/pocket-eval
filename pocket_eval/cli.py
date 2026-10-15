@@ -8,8 +8,8 @@ import sys
 from pathlib import Path
 
 from . import __version__
-from .backends import HFModel, RandomBaseline, load_corpus, make_ngram, token_stats
-from .core import EvalReport, QaItem, QaResult, best_option
+from .backends import HFModel, load_corpus, make_backend, token_stats
+from .core import EvalReport, QaItem, QaResult
 
 DATA_DIR = Path(__file__).resolve().parent / "data"
 BACKENDS = ("ngram", "random", "huggingface")
@@ -22,46 +22,40 @@ def load_qa_bench() -> list[QaItem]:
     return [QaItem.from_dict(d) for d in raw["questions"]]
 
 
-def run_eval(backend: str, model: str | None, seed: int, corpus: list[str], items: list[QaItem], with_ppl: bool) -> EvalReport:
-    """Evaluate one backend over the bundled benchmark, deterministically."""
+def run_eval(backend, model: str | None, seed: int, corpus: list[str], items: list[QaItem], with_ppl: bool) -> EvalReport:
+    """Evaluate one backend over the bundled benchmark, deterministically.
+
+    *backend* is either a backend name (str) — resolved here via
+    ``make_backend`` — or any object satisfying the ``core.Backend`` seam
+    (name / answer / corpus_ppl). The loop below branches on nothing: every
+    backend-specific decision lives behind the seam.
+    """
     notes: list[str] = []
+    is_named = isinstance(backend, str)
+    backend_obj = make_backend(backend, corpus, model, seed) if is_named else backend
     corpus_ppl: float | None = None
     corpus_tokens = 0
     if with_ppl:
-        stats = token_stats(corpus)
-        corpus_tokens = stats["tokens"]
-        if backend == "ngram":
-            corpus_ppl = make_ngram(corpus).perplexity(" ".join(corpus))
-        elif backend == "huggingface":
-            hf = HFModel(model)
-            corpus_ppl, corpus_tokens = hf.corpus_perplexity(corpus)
-            notes.append(f"HF model: {hf.model_id}")
-        else:
-            corpus_ppl = None
+        corpus_tokens = token_stats(corpus)["tokens"]
+        corpus_ppl = backend_obj.corpus_ppl(corpus)
 
     details: list[QaResult] = []
-    if backend in ("random", "ngram") or backend == "huggingface":
-        if backend == "random":
-            picker = RandomBaseline(seed)
-            for it in items:
-                predicted = picker.pick(len(it.options))
-                details.append(QaResult(it.id, predicted == it.answer, predicted, 0.0))
-            notes.append("random baseline: uniform chance floor (seeded, deterministic)")
-        else:
-            scorer = make_ngram(corpus) if backend == "ngram" else HFModel(model)
-            for it in items:
-                predicted, score = best_option(it.question, it.options, scorer.score_continuation)
-                details.append(QaResult(it.id, predicted == it.answer, predicted, score))
+    for it in items:
+        predicted, score = backend_obj.answer(it.question, it.options)
+        details.append(QaResult(it.id, predicted == it.answer, predicted, score))
+
     correct = sum(1 for d in details if d.correct)
     accuracy = correct / len(items) if items else 0.0
-
-    if backend == "huggingface" and not details:
-        # models that cannot score options (e.g. encoder-only) still get a report
-        notes.append("QA skipped: backend scored no options")
+    model_label = model or backend_obj.name
+    # Seed is report metadata for the local deterministic backends (ngram,
+    # random); a remote/HF model is deterministic without it.
+    backend_seed = seed if is_named and backend != "huggingface" else None
+    if is_named and backend == "random":
+        notes.append("random baseline: uniform chance floor (seeded, deterministic)")
     return EvalReport(
-        model=model or ({"ngram": "ngram-v1 (bundled bigram)", "random": "random-uniform", "huggingface": HFModel.DEFAULT_MODEL}.get(backend, backend)),
-        backend=backend,
-        seed=seed if backend in ("random", "ngram") else None,
+        model=model_label,
+        backend=backend_obj.name,
+        seed=backend_seed,
         corpus_ppl=corpus_ppl,
         corpus_tokens=corpus_tokens,
         qa_total=len(items),
@@ -115,8 +109,8 @@ def main(argv: list[str] | None = None) -> int:
 
         if args.command == "perplexity":
             if args.backend == "ngram":
-                lm = make_ngram(corpus)
-                ppl = lm.perplexity(args.text if args.text else " ".join(corpus))
+                lm = make_backend("ngram", corpus)
+                ppl = lm.corpus_ppl([args.text] if args.text else corpus)
             elif args.backend == "huggingface":
                 try:
                     hf = HFModel(args.model)
