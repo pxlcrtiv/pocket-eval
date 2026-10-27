@@ -8,8 +8,8 @@ import sys
 from pathlib import Path
 
 from . import __version__
-from .backends import HFModel, load_corpus, make_backend, token_stats
-from .core import EvalReport, QaItem, QaResult
+from .backends import load_corpus, make_backend, token_stats
+from .core import Backend, EvalReport, QaItem, QaResult
 
 DATA_DIR = Path(__file__).resolve().parent / "data"
 BACKENDS = ("ngram", "random", "huggingface")
@@ -66,6 +66,17 @@ def run_eval(backend, model: str | None, seed: int, corpus: list[str], items: li
     )
 
 
+def run_perplexity(backend: str | Backend, model: str | None, corpus: list[str], text: str | None) -> float | None:
+    """Compute perplexity through the Backend seam.
+
+    *backend* is either a backend name (str) — resolved via
+    ``make_backend`` — or any object satisfying the ``core.Backend`` seam.
+    """
+    backend_obj = make_backend(backend, corpus, model=model) if isinstance(backend, str) else backend
+    texts = [text] if text else corpus
+    return backend_obj.corpus_ppl(texts)
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="pocket-eval",
@@ -108,19 +119,14 @@ def main(argv: list[str] | None = None) -> int:
             return EXIT_OK
 
         if args.command == "perplexity":
-            if args.backend == "ngram":
-                lm = make_backend("ngram", corpus)
-                ppl = lm.corpus_ppl([args.text] if args.text else corpus)
-            elif args.backend == "huggingface":
-                try:
-                    hf = HFModel(args.model)
-                    ppl, _ = hf.corpus_perplexity([args.text] if args.text else corpus)
-                except RuntimeError as exc:
-                    print(f"error: {exc}", file=sys.stderr)
-                    return EXIT_NO_BACKEND
-            else:
+            if args.backend == "random":
                 print("error: --backend random cannot compute perplexity", file=sys.stderr)
                 return EXIT_ERROR
+            try:
+                ppl = run_perplexity(args.backend, args.model, corpus, args.text)
+            except RuntimeError as exc:
+                print(f"error: {exc}", file=sys.stderr)
+                return EXIT_NO_BACKEND
             if getattr(args, "json", False):
                 print(json.dumps({"perplexity": ppl}, sort_keys=True))
             else:
