@@ -289,3 +289,59 @@ def test_average_logprob_is_shared():
     assert LM.mean_logprob(["flash", "loans"]) == pytest.approx(
         average_logprob(["flash", "loans"], LM.logprob), abs=1e-12
     )
+
+
+# ---------------------------------------------------------------- perplexity seam
+def test_run_perplexity_accepts_a_fake_backend():
+    """The perplexity path is unit-testable with a scripted fake — no corpus,
+    no model, no CLI strings."""
+    from pocket_eval.cli import run_perplexity
+
+    class FakeBackend:
+        name = "fake"
+        seed = None
+
+        def answer(self, question, options):
+            return (0, 1.5)
+
+        def corpus_ppl(self, corpus):
+            return 42.0
+
+    # empty corpus + explicit text
+    assert run_perplexity(FakeBackend(), None, [], ["some text"]) == 42.0
+    # real ngram backend through the factory
+    assert run_perplexity("ngram", None, CORPUS, None) == pytest.approx(520.7238, abs=1e-3)
+
+
+def test_cli_perplexity_default_corpus(capsys):
+    from pocket_eval.cli import main
+
+    assert main(["perplexity"]) == 0
+    out = capsys.readouterr().out
+    assert "520.72" in out
+
+
+def test_run_perplexity_hf_backend_returns_float(monkeypatch):
+    """The huggingface backend's corpus_ppl is exercised through run_perplexity
+    and returns a float — no network, no real model."""
+    from pocket_eval import backends
+    from pocket_eval.cli import run_perplexity
+
+    monkeypatch.setattr(backends.HFModel, "_load", lambda self: None)
+    monkeypatch.setattr(
+        backends.HFModel,
+        "corpus_perplexity",
+        lambda self, corpus: (42.0, sum(len(c.split()) for c in corpus)),
+    )
+
+    result = run_perplexity("huggingface", None, CORPUS, None)
+    assert isinstance(result, float)
+    assert result == 42.0
+
+
+def test_cli_perplexity_random_backend_error(capsys):
+    from pocket_eval.cli import main
+
+    assert main(["perplexity", "--backend", "random"]) == 1
+    err = capsys.readouterr().err
+    assert "random cannot compute perplexity" in err
