@@ -396,3 +396,8 @@ A 15M-parameter model is worthless as a capability claim and invaluable as a har
 
 Store tokenized prompts, option order and seeds with every report. You cannot debug a score you cannot reconstruct, and you will need to reconstruct it.
 
+
+## 2026-10-30 — Eval tip of the day: Accuracy is one axis; cost and latency are the other two
+
+A 3-point accuracy gain that triples latency may be a regression in production. Fold wall-clock time and peak memory into the leaderboard.
+
