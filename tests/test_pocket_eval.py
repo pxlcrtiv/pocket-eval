@@ -289,3 +289,27 @@ def test_average_logprob_is_shared():
     assert LM.mean_logprob(["flash", "loans"]) == pytest.approx(
         average_logprob(["flash", "loans"], LM.logprob), abs=1e-12
     )
+
+
+# ---------------------------------------------------------------- perplexity seam
+def test_cli_perplexity_unsupported_backend_reports_none(monkeypatch, capsys):
+    """A backend whose corpus_ppl returns None is reported as unsupported
+    via the Backend seam — not a special-cased string branch."""
+    from pocket_eval import backends
+    from pocket_eval.cli import main
+
+    monkeypatch.setattr(backends.NgramLM, "corpus_ppl", lambda self, corpus: None)
+    assert main(["perplexity", "hello", "--backend", "ngram"]) == 1
+    err = capsys.readouterr().err
+    assert "cannot compute perplexity" in err
+
+
+def test_cli_perplexity_hf_uses_seam(monkeypatch, capsys):
+    """The huggingface perplexity path resolves via make_backend and calls
+    corpus_ppl — not a direct corpus_perplexity bypass."""
+    from pocket_eval import backends
+    from pocket_eval.cli import main
+
+    monkeypatch.setattr(backends.HFModel, "corpus_ppl", lambda self, corpus: 99.9)
+    assert main(["perplexity", "hello", "--backend", "huggingface", "--model", "x/y"]) == 0
+    assert "99.90" in capsys.readouterr().out

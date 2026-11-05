@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 
 from . import __version__
-from .backends import HFModel, load_corpus, make_backend, token_stats
+from .backends import load_corpus, make_backend, token_stats
 from .core import EvalReport, QaItem, QaResult
 
 DATA_DIR = Path(__file__).resolve().parent / "data"
@@ -108,18 +108,15 @@ def main(argv: list[str] | None = None) -> int:
             return EXIT_OK
 
         if args.command == "perplexity":
-            if args.backend == "ngram":
-                lm = make_backend("ngram", corpus)
-                ppl = lm.corpus_ppl([args.text] if args.text else corpus)
-            elif args.backend == "huggingface":
-                try:
-                    hf = HFModel(args.model)
-                    ppl, _ = hf.corpus_perplexity([args.text] if args.text else corpus)
-                except RuntimeError as exc:
-                    print(f"error: {exc}", file=sys.stderr)
-                    return EXIT_NO_BACKEND
-            else:
-                print("error: --backend random cannot compute perplexity", file=sys.stderr)
+            backend_obj = make_backend(args.backend, corpus, model=getattr(args, "model", None))
+            texts = [args.text] if args.text else corpus
+            try:
+                ppl = backend_obj.corpus_ppl(texts)
+            except RuntimeError as exc:
+                print(f"error: {exc}", file=sys.stderr)
+                return EXIT_NO_BACKEND
+            if ppl is None:
+                print(f"error: --backend {args.backend} cannot compute perplexity", file=sys.stderr)
                 return EXIT_ERROR
             if getattr(args, "json", False):
                 print(json.dumps({"perplexity": ppl}, sort_keys=True))
