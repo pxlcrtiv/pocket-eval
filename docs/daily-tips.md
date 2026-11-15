@@ -494,3 +494,8 @@ Same model + same seed + same i
 
 An eval that needs a GPU or an API key cannot run in CI, so it never runs. Keep a deterministic offline baseline in the default path — it is your regression gate.
 
+
+## 2026-11-15 — Eval tip of the day: Benchmarks rot; corpora rot
+
+Domain language changes ('NFT', 'L2', 'AA') and models absorb old benchmarks. Refresh the corpus and the item set on a calendar, not when someone remembers.
+
