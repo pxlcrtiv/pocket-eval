@@ -511,3 +511,8 @@ Random chance (floor) and the lexical baseline (cheap ceiling) bracket every mod
 
 > `pocket-eval demo`
 
+
+## 2026-11-18 — Eval tip of the day: Human review is the terminal test
+
+Automated metrics miss the label errors, ambiguous items and tricks. Every release, hand-audit a sample of items and a sample of model answers.
+
