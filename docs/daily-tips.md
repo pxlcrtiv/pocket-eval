@@ -535,3 +535,8 @@ A 15M-parameter model is worthless as a capability claim and invaluable as a har
 
 > `pocket-eval qa --backend huggingface --model sshleifer/tiny-gpt2`
 
+
+## 2026-11-22 — Eval tip of the day: Log the exact inputs
+
+Store tokenized prompts, option order and seeds with every report. You cannot debug a score you cannot reconstruct, and you will need to reconstruct it.
+
