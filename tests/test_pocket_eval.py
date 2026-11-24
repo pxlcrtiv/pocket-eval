@@ -221,9 +221,14 @@ def test_backend_protocol_conformance():
     for backend in (NgramLM(CORPUS), RandomBaseline(seed=7)):
         assert isinstance(backend, Backend)
         assert backend.name
+        assert backend.seed is None or isinstance(backend.seed, int)
         idx, score = backend.answer("What is a flash loan?", ("a", "b", "c", "d"))
         assert 0 <= idx < 4
         assert isinstance(score, float)
+        scored = backend.score_corpus(CORPUS)
+        assert scored.perplexity is None or isinstance(scored.perplexity, float)
+        assert isinstance(scored.tokens, int)
+        assert isinstance(backend.report_notes(), list)
 
 
 def test_make_backend_factory():
@@ -250,8 +255,13 @@ def test_run_eval_accepts_a_fake_backend():
         def answer(self, question, options):
             return (0, 1.5)  # always pick the first option, fixed score
 
-        def corpus_ppl(self, corpus):
-            return 42.0
+        def score_corpus(self, corpus):
+            from pocket_eval.core import CorpusScore
+
+            return CorpusScore(perplexity=42.0, tokens=0)
+
+        def report_notes(self):
+            return []
 
     items = [
         QaItem(id="a", topic="t", question="q1", options=("x", "y", "z", "w"), answer=0),
@@ -261,7 +271,7 @@ def test_run_eval_accepts_a_fake_backend():
     assert r.backend == "fake"
     assert r.model == "fake"
     assert r.corpus_ppl == 42.0
-    assert r.corpus_tokens == 0  # token_stats([]) -> 0 tokens, no corpus needed
+    assert r.corpus_tokens == 0  # reported by the seam, no token_stats reach-around
     assert r.qa_total == 2
     assert r.qa_correct == 1  # item a: picked 0 == answer 0
     assert r.qa_accuracy == 0.5
@@ -313,3 +323,80 @@ def test_cli_perplexity_hf_uses_seam(monkeypatch, capsys):
     monkeypatch.setattr(backends.HFModel, "corpus_ppl", lambda self, corpus: 99.9)
     assert main(["perplexity", "hello", "--backend", "huggingface", "--model", "x/y"]) == 0
     assert "99.90" in capsys.readouterr().out
+
+
+# ------------------------------------------------- seam: report context
+def test_run_eval_reads_report_context_from_the_seam():
+    """Seed, corpus tokens, and notes come from the Backend seam — run_eval
+    neither branches on a backend string nor reaches around to token_stats."""
+    from pocket_eval.cli import run_eval
+    from pocket_eval.core import CorpusScore
+
+    class FakeBackend:
+        name = "fake"
+        seed = 11
+
+        def answer(self, question, options):
+            return (0, 1.5)  # always pick the first option, fixed score
+
+        def score_corpus(self, corpus):
+            return CorpusScore(perplexity=42.0, tokens=9)
+
+        def report_notes(self):
+            return ["fake note"]
+
+    items = [
+        QaItem(id="a", topic="t", question="q1", options=("x", "y", "z", "w"), answer=0),
+        QaItem(id="b", topic="t", question="q2", options=("x", "y", "z", "w"), answer=3),
+    ]
+    r = run_eval(FakeBackend(), None, 7, [], items, with_ppl=True)
+    assert r.seed == 11
+    assert r.corpus_ppl == 42.0
+    assert r.corpus_tokens == 9
+    assert r.notes == ["fake note"]
+
+
+def test_run_eval_string_and_object_agree_on_report_context():
+    """Resolving a CLI string through make_backend yields exactly the report
+    context of the equivalent adapter handed to run_eval directly."""
+    from pocket_eval.cli import run_eval
+
+    r_str = run_eval("random", None, 5, CORPUS, ITEMS, with_ppl=True)
+    r_obj = run_eval(RandomBaseline(seed=5), None, 5, CORPUS, ITEMS, with_ppl=True)
+    assert r_str.seed == r_obj.seed == 5
+    assert r_str.corpus_ppl == r_obj.corpus_ppl is None
+    assert r_str.corpus_tokens == r_obj.corpus_tokens == 0
+    assert r_str.notes == r_obj.notes
+    assert r_str.qa_correct == r_obj.qa_correct
+
+
+def test_ngram_adapter_reports_scored_tokens_and_seed():
+    from pocket_eval.core import CorpusScore
+
+    lm = NgramLM(CORPUS, seed=7)
+    score = lm.score_corpus(CORPUS)
+    assert isinstance(score, CorpusScore)
+    assert score.perplexity == pytest.approx(520.7238, abs=1e-3)
+    assert score.tokens == 3487
+    assert lm.seed == 7
+    assert lm.report_notes() == []
+
+
+def test_random_adapter_exposes_seed_note_and_no_corpus_score():
+    from pocket_eval.core import CorpusScore
+
+    rb = RandomBaseline(seed=3)
+    assert rb.seed == 3
+    assert rb.score_corpus(CORPUS) == CorpusScore(perplexity=None, tokens=0)
+    assert rb.report_notes() == ["random baseline: uniform chance floor (seeded, deterministic)"]
+
+
+def test_hf_adapter_score_corpus_reports_model_token_count(monkeypatch):
+    from pocket_eval.backends import HFModel
+    from pocket_eval.core import CorpusScore
+
+    monkeypatch.setattr(HFModel, "corpus_perplexity", lambda self, docs: (2.5, 11))
+    hf = HFModel("x/y")
+    assert hf.score_corpus(["a"]) == CorpusScore(perplexity=2.5, tokens=11)
+    assert hf.seed is None
+    assert hf.report_notes() == []

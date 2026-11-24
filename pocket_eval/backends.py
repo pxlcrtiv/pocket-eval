@@ -14,7 +14,7 @@ import math
 import random
 from pathlib import Path
 
-from .core import Backend, PerplexityError, average_logprob, tokenize
+from .core import Backend, CorpusScore, PerplexityError, average_logprob, tokenize
 
 UNKNOWN = "<unk>"
 
@@ -27,9 +27,9 @@ class NgramLM:
     training, so OOV sequences still get finite probabilities).
     """
 
-    def __init__(self, corpus_docs: list[str]):
+    def __init__(self, corpus_docs: list[str], seed: int | None = None):
         self.name = "ngram-v1 (bundled bigram)"
-        self.seed: int | None = None
+        self.seed = seed
         self.vocab: dict[str, int] = {}
         self.unigram: dict[str, int] = {}
         self.bigram: dict[tuple[str, str], int] = {}
@@ -99,11 +99,25 @@ class NgramLM:
 
         return best_option(question, options, self.score_continuation)
 
+    def score_corpus(self, corpus: list[str]) -> CorpusScore:
+        """Perplexity of the whole corpus plus the token count it was scored over.
+
+        Tokenizes once here — the count is exactly the denominator the
+        perplexity mean used, so callers never re-tokenize behind the seam.
+        """
+        if not corpus:
+            return CorpusScore(None, 0)
+        toks = tokenize(" ".join(corpus))
+        if not toks:
+            raise PerplexityError("text contains no tokenizable words")
+        return CorpusScore(math.exp(-self.mean_logprob(toks)), len(toks))
+
     def corpus_ppl(self, corpus: list[str]) -> float | None:
         """Perplexity of the whole corpus, or None when there is nothing to score."""
-        if not corpus:
-            return None
-        return self.perplexity(" ".join(corpus))
+        return self.score_corpus(corpus).perplexity
+
+    def report_notes(self) -> list[str]:
+        return []
 
 
 class RandomBaseline:
@@ -115,7 +129,7 @@ class RandomBaseline:
 
     def __init__(self, seed: int = 7):
         self.name = "random-uniform"
-        self.seed = seed
+        self.seed: int | None = seed
         self._rng = random.Random(seed)
 
     def pick(self, option_count: int) -> int:
@@ -125,9 +139,16 @@ class RandomBaseline:
         """Uniform chance pick for one QA item — (index, meaningless score)."""
         return self.pick(len(options)), 0.0
 
+    def score_corpus(self, corpus: list[str]) -> CorpusScore:
+        """The random baseline has no language model — no perplexity, no scored tokens."""
+        return CorpusScore(None, 0)
+
     def corpus_ppl(self, corpus: list[str]) -> float | None:
         """The random baseline has no language model — perplexity is unsupported."""
-        return None
+        return self.score_corpus(corpus).perplexity
+
+    def report_notes(self) -> list[str]:
+        return ["random baseline: uniform chance floor (seeded, deterministic)"]
 
 
 class HFModel:
@@ -232,10 +253,21 @@ class HFModel:
 
         return best_option(question, options, self.score_continuation)
 
+    def score_corpus(self, corpus: list[str]) -> CorpusScore:
+        """Corpus perplexity and scored-token count from the model's own loss.
+
+        ``corpus_perplexity`` already returns both; surfacing the token count
+        here means callers learn it without a second pass over the model.
+        """
+        ppl, total_tokens = self.corpus_perplexity(corpus)
+        return CorpusScore(ppl, total_tokens)
+
     def corpus_ppl(self, corpus: list[str]) -> float | None:
         """Perplexity of the whole corpus via the model's cross-entropy loss."""
-        ppl, _ = self.corpus_perplexity(corpus)
-        return ppl
+        return self.score_corpus(corpus).perplexity
+
+    def report_notes(self) -> list[str]:
+        return []
 
 
 def load_corpus(data_dir: Path) -> list[str]:
@@ -258,12 +290,12 @@ def token_stats(corpus_docs: list[str]) -> dict:
     return {"docs": len(corpus_docs), "tokens": n_tokens, "vocab": len(vocab)}
 
 
-def make_ngram(corpus_docs: list[str]) -> NgramLM:
+def make_ngram(corpus_docs: list[str], seed: int | None = None) -> NgramLM:
     from functools import lru_cache
 
     @lru_cache(maxsize=1)
     def _build() -> NgramLM:
-        return NgramLM(corpus_docs)
+        return NgramLM(corpus_docs, seed=seed)
 
     return _build()
 
@@ -272,7 +304,7 @@ def make_backend(backend: str, corpus: list[str], model: str | None = None, seed
     """The ONE place a CLI string becomes a Backend. The eval loop never sees
     the string — this factory is the whole of the dispatch."""
     if backend == "ngram":
-        return make_ngram(corpus)
+        return make_ngram(corpus, seed=seed)
     if backend == "random":
         return RandomBaseline(seed)
     if backend == "huggingface":

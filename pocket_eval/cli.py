@@ -9,7 +9,7 @@ from pathlib import Path
 
 from . import __version__
 from .backends import load_corpus, make_backend, token_stats
-from .core import EvalReport, QaItem, QaResult
+from .core import CorpusScore, EvalReport, QaItem, QaResult
 
 DATA_DIR = Path(__file__).resolve().parent / "data"
 BACKENDS = ("ngram", "random", "huggingface")
@@ -27,42 +27,31 @@ def run_eval(backend, model: str | None, seed: int, corpus: list[str], items: li
 
     *backend* is either a backend name (str) — resolved here via
     ``make_backend`` — or any object satisfying the ``core.Backend`` seam
-    (name / answer / corpus_ppl). The loop below branches on nothing: every
-    backend-specific decision lives behind the seam.
+    (name / seed / answer / score_corpus / report_notes). The loop below
+    branches on nothing: every backend-specific decision, including the
+    report's seed, token count, and notes, lives behind the seam.
     """
-    notes: list[str] = []
-    is_named = isinstance(backend, str)
-    backend_obj = make_backend(backend, corpus, model, seed) if is_named else backend
-    corpus_ppl: float | None = None
-    corpus_tokens = 0
-    if with_ppl:
-        corpus_tokens = token_stats(corpus)["tokens"]
-        corpus_ppl = backend_obj.corpus_ppl(corpus)
+    backend_obj = make_backend(backend, corpus, model, seed) if isinstance(backend, str) else backend
+    score = backend_obj.score_corpus(corpus) if with_ppl else CorpusScore(None, 0)
 
     details: list[QaResult] = []
     for it in items:
-        predicted, score = backend_obj.answer(it.question, it.options)
-        details.append(QaResult(it.id, predicted == it.answer, predicted, score))
+        predicted, qa_score = backend_obj.answer(it.question, it.options)
+        details.append(QaResult(it.id, predicted == it.answer, predicted, qa_score))
 
     correct = sum(1 for d in details if d.correct)
     accuracy = correct / len(items) if items else 0.0
-    model_label = model or backend_obj.name
-    # Seed is report metadata for the local deterministic backends (ngram,
-    # random); a remote/HF model is deterministic without it.
-    backend_seed = seed if is_named and backend != "huggingface" else None
-    if is_named and backend == "random":
-        notes.append("random baseline: uniform chance floor (seeded, deterministic)")
     return EvalReport(
-        model=model_label,
+        model=model or backend_obj.name,
         backend=backend_obj.name,
-        seed=backend_seed,
-        corpus_ppl=corpus_ppl,
-        corpus_tokens=corpus_tokens,
+        seed=backend_obj.seed,
+        corpus_ppl=score.perplexity,
+        corpus_tokens=score.tokens,
         qa_total=len(items),
         qa_correct=correct,
         qa_accuracy=accuracy,
         qa_details=details,
-        notes=notes,
+        notes=list(backend_obj.report_notes()),
     )
 
 

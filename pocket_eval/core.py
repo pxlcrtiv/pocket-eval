@@ -10,6 +10,19 @@ from typing import Protocol, runtime_checkable
 WORD_RE = re.compile(r"[a-z0-9]+(?:['-][a-z0-9]+)*")
 
 
+@dataclass(frozen=True)
+class CorpusScore:
+    """What one adapter can say about a whole corpus for a report.
+
+    ``perplexity`` is None when the adapter cannot score text (e.g. the
+    random floor); ``tokens`` is how many tokens it scored over, which each
+    adapter knows from its own tokenization.
+    """
+
+    perplexity: float | None
+    tokens: int
+
+
 @runtime_checkable
 class Backend(Protocol):
     """The evaluation seam: everything the eval loop needs from a model.
@@ -18,12 +31,17 @@ class Backend(Protocol):
     interchangeable and the eval loop branches on nothing:
 
     - ``name``          — display name used in reports
+    - ``seed``          — deterministic seed this adapter was built with, or None
     - ``answer``        — answer one question: (option index, score)
     - ``corpus_ppl``    — perplexity of the whole corpus, or None when the
                           backend cannot compute it (e.g. the random floor)
+    - ``score_corpus``  — corpus perplexity plus scored-token count, so callers
+                          never re-tokenize behind the seam
+    - ``report_notes``  — adapter-specific lines a report should carry
     """
 
     name: str
+    seed: int | None
 
     def answer(self, question: str, options: tuple[str, ...]) -> tuple[int, float]:
         """Return (chosen option index, its score) for one QA item."""
@@ -31,6 +49,14 @@ class Backend(Protocol):
 
     def corpus_ppl(self, corpus: list[str]) -> float | None:
         """Perplexity of the joined corpus, or None if unsupported."""
+        ...
+
+    def score_corpus(self, corpus: list[str]) -> CorpusScore:
+        """Perplexity of the corpus and the token count it was computed over."""
+        ...
+
+    def report_notes(self) -> list[str]:
+        """Report lines this adapter contributes (empty when it has none)."""
         ...
 
 
