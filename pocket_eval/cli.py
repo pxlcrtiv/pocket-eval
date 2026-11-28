@@ -9,7 +9,8 @@ from pathlib import Path
 
 from . import __version__
 from .backends import load_corpus, make_backend, token_stats
-from .core import CorpusScore, EvalReport, QaItem, QaResult
+from .core import QaItem
+from .eval_loop import run_eval
 
 DATA_DIR = Path(__file__).resolve().parent / "data"
 BACKENDS = ("ngram", "random", "huggingface")
@@ -21,38 +22,6 @@ def load_qa_bench() -> list[QaItem]:
     raw = json.loads(bench_path.read_text(encoding="utf-8"))
     return [QaItem.from_dict(d) for d in raw["questions"]]
 
-
-def run_eval(backend, model: str | None, seed: int, corpus: list[str], items: list[QaItem], with_ppl: bool) -> EvalReport:
-    """Evaluate one backend over the bundled benchmark, deterministically.
-
-    *backend* is either a backend name (str) — resolved here via
-    ``make_backend`` — or any object satisfying the ``core.Backend`` seam
-    (name / seed / answer / score_corpus / report_notes). The loop below
-    branches on nothing: every backend-specific decision, including the
-    report's seed, token count, and notes, lives behind the seam.
-    """
-    backend_obj = make_backend(backend, corpus, model, seed) if isinstance(backend, str) else backend
-    score = backend_obj.score_corpus(corpus) if with_ppl else CorpusScore(None, 0)
-
-    details: list[QaResult] = []
-    for it in items:
-        predicted, qa_score = backend_obj.answer(it.question, it.options)
-        details.append(QaResult(it.id, predicted == it.answer, predicted, qa_score))
-
-    correct = sum(1 for d in details if d.correct)
-    accuracy = correct / len(items) if items else 0.0
-    return EvalReport(
-        model=model or backend_obj.name,
-        backend=backend_obj.name,
-        seed=backend_obj.seed,
-        corpus_ppl=score.perplexity,
-        corpus_tokens=score.tokens,
-        qa_total=len(items),
-        qa_correct=correct,
-        qa_accuracy=accuracy,
-        qa_details=details,
-        notes=list(backend_obj.report_notes()),
-    )
 
 
 def build_parser() -> argparse.ArgumentParser:
