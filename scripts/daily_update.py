@@ -64,7 +64,7 @@ EPOCH = dt.date(1970, 1, 1)
 
 def log(msg: str) -> None:
     """Mirror every run line to both stdout and ~/.daily-green/daily-green.log."""
-    stamp = dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")  # noqa: DTZ005 - local wall clock is intentional
+    stamp = dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     line = f"{stamp} {REPO_ROOT.name}: {msg}"
     print(line, flush=True)
     try:
@@ -90,7 +90,7 @@ def today() -> dt.date:
     sim = os.environ.get("DAILY_GREEN_SIM_DATE")
     if sim:
         return dt.date.fromisoformat(sim)
-    return dt.date.today()  # noqa: DTZ011 - local calendar day is intentional
+    return dt.date.today()
 
 
 def first_run_header() -> list[str]:
@@ -205,7 +205,7 @@ def main() -> int:
             fh.write("\n" + "\n".join(render_entry(day, pool_tip(day, pool))) + "\n")
         git("add", LOG_FILE)
         if day == now:
-            stamp = dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")  # noqa: DTZ005 - local wall clock is intentional
+            stamp = dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         else:
             stamp = f"{day.isoformat()} 12:00:00"
         env = dict(os.environ, GIT_AUTHOR_DATE=stamp, GIT_COMMITTER_DATE=stamp)
