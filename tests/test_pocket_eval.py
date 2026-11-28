@@ -278,6 +278,41 @@ def test_run_eval_accepts_a_fake_backend():
     assert [d.score for d in r.qa_details] == [1.5, 1.5]
 
 
+def test_run_eval_crosses_the_deep_eval_module():
+    """The scripted fake-backend test crosses the deep module's interface
+    directly — no CLI strings, no corpus, no data files."""
+    from pocket_eval.eval_loop import run_eval
+
+    class FakeBackend:
+        name = "fake"
+        seed = None
+
+        def answer(self, question, options):
+            return (0, 1.5)
+
+        def score_corpus(self, corpus):
+            from pocket_eval.core import CorpusScore
+
+            return CorpusScore(perplexity=42.0, tokens=0)
+
+        def report_notes(self):
+            return []
+
+    items = [
+        QaItem(id="a", topic="t", question="q1", options=("x", "y", "z", "w"), answer=0),
+        QaItem(id="b", topic="t", question="q2", options=("x", "y", "z", "w"), answer=3),
+    ]
+    r = run_eval(FakeBackend(), None, 7, [], items, with_ppl=True)
+    assert r.backend == "fake"
+    assert r.model == "fake"
+    assert r.corpus_ppl == 42.0
+    assert r.corpus_tokens == 0
+    assert r.qa_total == 2
+    assert r.qa_correct == 1
+    assert r.qa_accuracy == 0.5
+    assert [d.score for d in r.qa_details] == [1.5, 1.5]
+
+
 def test_run_eval_string_still_works():
     """Backwards compatibility: the CLI passes strings, resolved by the factory."""
     from pocket_eval.cli import run_eval
